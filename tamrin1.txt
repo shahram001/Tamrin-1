@@ -1,0 +1,93 @@
+#include <iostream>
+#include <cstring>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+#define PORT 12345
+
+void runServer() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    char buffer[1024] = {0};
+
+    // ساخت سوکت سرور
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // اتصال به آدرس و پورت
+    bind(server_fd, (struct sockaddr*)&address, sizeof(address));
+    listen(server_fd, 1);
+
+    std::cout << "منتظر اتصال کلاینت..." << std::endl;
+    new_socket = accept(server_fd, NULL, NULL);
+    std::cout << "اتصال برقرار شد" << std::endl;
+
+    while (true) {
+        // دریافت پیام از کلاینت
+        int valread = read(new_socket, buffer, 1024);
+        if (valread <= 0) break;
+        std::cout << "کلاینت: " << buffer << std::endl;
+
+        // ارسال پیام به کلاینت
+        std::cout << "شما: ";
+        std::string message;
+        std::getline(std::cin, message);
+        send(new_socket, message.c_str(), message.size(), 0);
+    }
+
+    close(new_socket);
+    close(server_fd);
+}
+
+void runClient() {
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    char buffer[1024] = {0};
+
+    // ساخت سوکت کلاینت
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+
+    // اتصال به سرور
+    connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    std::cout << "به سرور متصل شدید" << std::endl;
+
+    while (true) {
+        // ارسال پیام به سرور
+        std::cout << "شما: ";
+        std::string message;
+        std::getline(std::cin, message);
+        send(sock, message.c_str(), message.size(), 0);
+
+        // دریافت پیام از سرور
+        int valread = read(sock, buffer, 1024);
+        if (valread <= 0) break;
+        std::cout << "سرور: " << buffer << std::endl;
+    }
+
+    close(sock);
+}
+
+int main() {
+    int choice;
+    std::cout << "نقش خود را انتخاب کنید:\n1. سرور\n2. کلاینت\n> ";
+    std::cin >> choice;
+    std::cin.ignore();  // برای پاک کردن \n باقی‌مانده در ورودی
+
+    if (choice == 1) {
+        runServer();
+    } else if (choice == 2) {
+        runClient();
+    } else {
+        std::cout << "گزینه نامعتبر!" << std::endl;
+    }
+
+    return 0;
+}
